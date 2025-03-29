@@ -1,60 +1,60 @@
 ---
 - name: Deploy C++ Redistributables to Windows VMs
   hosts: localhost
-  gather_facts: no
+  gather_facts: false
   tasks:
-    - name: Gather Windows VMs from vCenter
-      community.vmware.vmware_vm_info:
-        hostname: "{{ vcenter_hostname }}"
-        username: "{{ vcenter_username }}"
-        password: "{{ vcenter_password }}"
-        validate_certs: no
-      register: vm_info
-
     - name: Filter Windows VMs
-      set_fact:
-        windows_vms: "{{ vm_info.virtual_machines | selectattr('guest.guest_full_name', 'search', 'Windows') | selectattr('power_state', 'equalto', 'poweredOn') | map(attribute='guest.ip_address') | list }}"
+      ansible.builtin.set_fact:
+        windows_username: ''
+        windows_password: ''
 
 - name: Install C++ Redistributables on Windows VMs
-  hosts: "{{ windows_vms }}"
-  gather_facts: no
+  hosts: windows_vms
+  gather_facts: false
   vars:
-    ansible_user: "{{ windows_username }}"
-    ansible_password: "{{ windows_password }}"
-    ansible_connection: winrm
-    ansible_winrm_transport: basic
+    ansible_user: "{{ hostvars['localhost']['windows_username'] }}"
+    ansible_password: "{{ hostvars['localhost']['windows_password'] }}"
+    ansible_connection: psrp
+    ansible_psrp_auth: ntlm
+    ansible_psrp_cert_validation: ignore
   tasks:
     - name: Ensure Temp directory exists
       ansible.windows.win_file:
         path: C:\Temp
         state: directory
+      register: ensure_temp_dir
 
-    - name: Download x86 Redistributable
+    - name: Download x86 Redistributable if not installed
       ansible.windows.win_get_url:
         url: https://aka.ms/vs/16/release/vc_redist.x86.exe
         dest: C:\Temp\vc_redist.x86.exe
+      register: download_x86
 
-    - name: Download x64 Redistributable
+    - name: Download x64 Redistributable if not installed
       ansible.windows.win_get_url:
         url: https://aka.ms/vs/16/release/vc_redist.x64.exe
         dest: C:\Temp\vc_redist.x64.exe
+      register: download_x64
 
-    - name: Install x86 Redistributable
+    - name: Install x86 Redistributable if not installed
       ansible.windows.win_package:
         path: C:\Temp\vc_redist.x86.exe
         arguments: /install /quiet /norestart
         state: present
+      register: install_x86
 
-    - name: Install x64 Redistributable
+    - name: Install x64 Redistributable if not installed
       ansible.windows.win_package:
         path: C:\Temp\vc_redist.x64.exe
         arguments: /install /quiet /norestart
         state: present
+      register: install_x64
 
     - name: Check if reboot is required
       ansible.windows.win_reboot:
         reboot_timeout: 600
         msg: "Rebooting after installing C++ Redistributables."
+      register: reboot_result
 
     - name: Clean up installer files
       ansible.windows.win_file:
@@ -63,3 +63,4 @@
       loop:
         - C:\Temp\vc_redist.x86.exe
         - C:\Temp\vc_redist.x64.exe
+      register: cleanup_result
