@@ -2,6 +2,7 @@
 .env
 .venv
 .ansible
+.vscode
 env/
 venv/
 ENV/
