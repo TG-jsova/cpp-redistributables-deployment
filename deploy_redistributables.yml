@@ -1,0 +1,65 @@
+---
+- name: Deploy C++ Redistributables to Windows VMs
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Gather Windows VMs from vCenter
+      community.vmware.vmware_vm_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+      register: vm_info
+
+    - name: Filter Windows VMs
+      set_fact:
+        windows_vms: "{{ vm_info.virtual_machines | selectattr('guest.guest_full_name', 'search', 'Windows') | selectattr('power_state', 'equalto', 'poweredOn') | map(attribute='guest.ip_address') | list }}"
+
+- name: Install C++ Redistributables on Windows VMs
+  hosts: "{{ windows_vms }}"
+  gather_facts: no
+  vars:
+    ansible_user: "{{ windows_username }}"
+    ansible_password: "{{ windows_password }}"
+    ansible_connection: winrm
+    ansible_winrm_transport: basic
+  tasks:
+    - name: Ensure Temp directory exists
+      ansible.windows.win_file:
+        path: C:\Temp
+        state: directory
+
+    - name: Download x86 Redistributable
+      ansible.windows.win_get_url:
+        url: https://aka.ms/vs/16/release/vc_redist.x86.exe
+        dest: C:\Temp\vc_redist.x86.exe
+
+    - name: Download x64 Redistributable
+      ansible.windows.win_get_url:
+        url: https://aka.ms/vs/16/release/vc_redist.x64.exe
+        dest: C:\Temp\vc_redist.x64.exe
+
+    - name: Install x86 Redistributable
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x86.exe
+        arguments: /install /quiet /norestart
+        state: present
+
+    - name: Install x64 Redistributable
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x64.exe
+        arguments: /install /quiet /norestart
+        state: present
+
+    - name: Check if reboot is required
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting after installing C++ Redistributables."
+
+    - name: Clean up installer files
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - C:\Temp\vc_redist.x86.exe
+        - C:\Temp\vc_redist.x64.exe
