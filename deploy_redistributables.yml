@@ -3,13 +3,13 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Filter Windows VMs
+    - name: Set user creds
       ansible.builtin.set_fact:
         windows_username: ''
         windows_password: ''
 
 - name: Install C++ Redistributables on Windows VMs
-  hosts: windows_vms
+  hosts: windows_vms # leveraging inventory group 'windows_vms' for the target Windows machines
   gather_facts: false
   vars:
     ansible_user: "{{ hostvars['localhost']['windows_username'] }}"
