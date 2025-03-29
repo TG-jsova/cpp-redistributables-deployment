@@ -46,6 +46,3 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 - Rebooting is handled automatically if required by the installation process.
 - Ensure that PowerShell Remoting is enabled on the target machines.
 
-## License
-
-This project is licensed under the MIT License.
