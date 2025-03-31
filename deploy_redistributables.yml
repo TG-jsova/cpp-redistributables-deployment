@@ -99,5 +99,5 @@
       loop:
         - C:\Temp\vc_redist.x86.exe
         - C:\Temp\vc_redist.x64.exe
-        # - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+        - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
       register: cleanup_result
