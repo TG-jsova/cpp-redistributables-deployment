@@ -1,5 +1,5 @@
 ---
-- name: Gather Windows Credenials
+- name: Gather Windows Credentials
   hosts: localhost
   gather_facts: false
   tasks:
@@ -7,6 +7,36 @@
       ansible.builtin.set_fact:
         windows_username: '' # Enter your Windows username here
         windows_password: '' # Enter your Windows password here
+        vcenter_hostname: "vcenter.example.com" # Replace with your vCenter hostname
+
+- name: Retrieve vCenter Inventory and Create Host Group
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Log in to vCenter
+      community.vmware.vmware_vm_info:
+        hostname: "{{ hostvars['localhost']['vcenter_hostname'] }}"
+        username: "{{ hostvars['localhost']['windows_username'] }}"
+        password: "{{ hostvars['localhost']['windows_password'] }}"
+        validate_certs: false
+      register: vcenter_inventory
+
+    - name: Filter powered-on Windows Server VMs
+      ansible.builtin.set_fact:
+        windows_vms: >-
+          {{
+            vcenter_inventory.virtual_machines
+            | selectattr('guest.guest_id', 'search', '^windows')
+            | selectattr('runtime.power_state', 'equalto', 'poweredOn')
+            | map(attribute='guest.ip_address')
+            | list
+          }}
+
+    - name: Add Windows VMs to in-memory inventory
+      ansible.builtin.add_host:
+        name: "{{ item }}"
+        groups: windows_vms
+      loop: "{{ windows_vms }}"
 
 - name: Install C++ Redistributables on Windows VMs
   hosts: windows_vms
