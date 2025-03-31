@@ -34,13 +34,10 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 - **Static Inventory**:
   - Uses a static inventory file (`windows_vms`) to specify the target Windows VMs.
-- **Check for Pending Reboots**:
-  - Checks if a reboot is pending on the target machines before starting the installation process.
-  - Reboots the machine if required and waits for it to become reachable over WinRM.
 - **Install C++ Redistributables**:
   - Ensures the `C:\Temp` directory exists.
   - Downloads the x86 and x64 redistributable installers.
-  - Installs the redistributables if not already installed.
+  - Installs the redistributables.
   - Reboots the machine if required.
   - Cleans up temporary installer files.
 - **Install VMware Tools 12.5.1**:
@@ -54,5 +51,4 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 - The playbook uses `win_get_url` to download the redistributables and VMware Tools, and `win_package` to install them.
 - Rebooting is handled automatically if required by the installation process.
 - Ensure that PowerShell Remoting is enabled on the target machines.
-- The playbook includes a task to handle pending reboots before starting the installation process to avoid potential issues.
 

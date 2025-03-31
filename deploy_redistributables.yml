@@ -18,24 +18,11 @@
     ansible_psrp_auth: ntlm
     ansible_psrp_cert_validation: ignore
   tasks:
-    - name: Check for pending reboot
-      ansible.windows.win_shell:
-        cmd: |
-          (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending" -ErrorAction SilentlyContinue) -ne $null
-      register: reboot_pending
-
-    - name: Reboot system if pending
-      ansible.windows.win_reboot:
-        reboot_timeout: 600
-        msg: "Rebooting system due to pending reboot."
-      when: reboot_pending.stdout == "True"
-
     - name: Wait for system to become reachable over WinRM
       ansible.builtin.wait_for_connection:
         delay: 6
         timeout: 900
         sleep: 10
-      when: reboot_pending.stdout == "True"
 
     - name: Ensure Temp directory exists
       ansible.windows.win_file:
@@ -112,5 +99,5 @@
       loop:
         - C:\Temp\vc_redist.x86.exe
         - C:\Temp\vc_redist.x64.exe
-        - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+        # - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
       register: cleanup_result
