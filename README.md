@@ -6,7 +6,7 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 1. **Ansible**: Ensure Ansible is installed on your control machine.
 2. **Windows VMs**: The target machines must be running Windows and accessible via PowerShell Remoting (PSRP).
-3. **Inventory File**: Use an inventory file to specify the target hosts and credentials.
+3. **Inventory File**: Use a static inventory file to specify the target hosts and credentials.
 
 ## Usage
 
@@ -16,13 +16,13 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
    cd cpp-redistributables-deployment
    ```
 
-2. Set up your inventory file (e.g., `windows_vms`):
+2. Update the inventory file (`windows_vms`) with the IP addresses or hostnames of your Windows VMs:
    ```ini
    [windows_vms]
-   <IP or hostname>
+   192.168.0.120
    ```
 
-3. Run the playbook with the inventory file:
+3. Run the playbook:
    ```bash
    ansible-playbook -i windows_vms deploy_redistributables.yml
    ```
@@ -32,13 +32,19 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 ## Playbook Overview
 
-- **Inventory File**: Specifies the target hosts and credentials.
+- **Static Inventory**:
+  - Uses a static inventory file (`windows_vms`) to specify the target Windows VMs.
 - **Install C++ Redistributables**:
   - Ensures the `C:\Temp` directory exists.
   - Downloads the x86 and x64 redistributable installers.
   - Installs the redistributables if not already installed.
   - Reboots the machine if required.
   - Cleans up temporary installer files.
+- **Install VMware Tools 12.5.1**:
+  - Downloads the VMware Tools installer.
+  - Installs VMware Tools with reboot suppressed.
+  - Reboots the machine if required after installation.
+  - Cleans up the VMware Tools installer file.
 
 ## Notes
 

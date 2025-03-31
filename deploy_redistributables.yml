@@ -1,5 +1,5 @@
 ---
-- name: Deploy C++ Redistributables to Windows VMs
+- name: Gather Windows Credenials
   hosts: localhost
   gather_facts: false
   tasks:
@@ -9,7 +9,7 @@
         windows_password: ''
 
 - name: Install C++ Redistributables on Windows VMs
-  hosts: windows_vms # leveraging inventory group 'windows_vms' for the target Windows machines
+  hosts: windows_vms
   gather_facts: false
   vars:
     ansible_user: "{{ hostvars['localhost']['windows_username'] }}"
@@ -56,6 +56,37 @@
         msg: "Rebooting after installing C++ Redistributables."
       register: reboot_result
 
+    - name: Wait for system to become reachable over WinRM
+      ansible.builtin.wait_for_connection:
+        delay: 6
+        timeout: 900
+        sleep: 10
+
+    - name: Download VMware Tools 12.5.1 installer
+      ansible.windows.win_get_url:
+        url: https://packages.vmware.com/tools/releases/latest/windows/x64/VMware-tools-12.5.1-24649672-x64.exe
+        dest: C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+      register: download_vmware_tools
+
+    - name: Install VMware Tools 12.5.1 with reboot suppressed
+      ansible.windows.win_package:
+        path: C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+        arguments: /S /v"/qn REBOOT=ReallySuppress"
+        state: present
+      register: install_vmware_tools
+
+    - name: Check if reboot is required after VMware Tools installation
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting after installing VMware Tools 12.5.1."
+      when: install_vmware_tools.reboot_required
+
+    - name: Wait for system to become reachable over WinRM
+      ansible.builtin.wait_for_connection:
+        delay: 6
+        timeout: 900
+        sleep: 10
+
     - name: Clean up installer files
       ansible.windows.win_file:
         path: "{{ item }}"
@@ -63,4 +94,5 @@
       loop:
         - C:\Temp\vc_redist.x86.exe
         - C:\Temp\vc_redist.x64.exe
+        - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
       register: cleanup_result
