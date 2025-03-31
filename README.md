@@ -4,11 +4,35 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 ## Prerequisites
 
-1. **Ansible**: Ensure Ansible is installed on your control machine.
+1. **Docker**: Ensure Docker and Docker Compose are installed on your control machine.
 2. **Windows VMs**: The target machines must be running Windows and accessible via PowerShell Remoting (PSRP).
 3. **Inventory File**: Use a static inventory file to specify the target hosts and credentials.
 
 ## Usage
+
+### Using Docker
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/TG-jsova/vmware-tools-12.5.1-update.git
+   cd vmware-tools-12.5.1-update
+   ```
+
+2. Update the inventory file (`windows_vms`) with the IP addresses or hostnames of your Windows VMs:
+   ```ini
+   [windows_vms]
+   192.168.0.120
+   ```
+
+3. Build and run the Docker container:
+   ```bash
+   docker-compose up --build
+   ```
+
+4. Verify the installation:
+   - Check the target machines to confirm that the redistributables and VMware Tools are installed.
+
+### Running Locally
 
 1. Clone this repository:
    ```bash
