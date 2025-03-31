@@ -8,13 +8,16 @@ services:
     environment:
       - ANSIBLE_HOST_KEY_CHECKING=False
       - ANSIBLE_PYTHON_INTERPRETER=/venv/bin/python3
+      - WINDOWS_USERNAME=${WINDOWS_USERNAME}
+      - WINDOWS_PASSWORD=${WINDOWS_PASSWORD}
+      - VCENTER_HOSTNAME=${VCENTER_HOSTNAME}
     entrypoint: >
       sh -c "
       apt-get update &&
       apt-get install -y python3 python3-pip python3-venv sshpass software-properties-common &&
       python3 -m venv /venv &&
       . /venv/bin/activate &&
-      pip install ansible pypsrp pyvmomi &&
+      pip install ansible pypsrp pyvmomi requests cryptography &&
       ansible-galaxy collection install ansible.windows &&
       ansible-galaxy collection install community.windows &&
       ansible-galaxy collection install community.vmware &&

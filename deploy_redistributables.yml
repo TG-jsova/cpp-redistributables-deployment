@@ -3,11 +3,11 @@
   hosts: localhost
   gather_facts: false
   tasks:
-    - name: Set user creds
+    - name: Set user creds from environment variables
       ansible.builtin.set_fact:
-        windows_username: '' # Enter your Windows username here
-        windows_password: '' # Enter your Windows password here
-        vcenter_hostname: "vcenter.example.com" # Replace with your vCenter hostname
+        windows_username: "{{ lookup('env', 'WINDOWS_USERNAME') }}"
+        windows_password: "{{ lookup('env', 'WINDOWS_PASSWORD') }}"
+        vcenter_hostname: "{{ lookup('env', 'VCENTER_HOSTNAME') }}"
 
 - name: Retrieve vCenter Inventory and Create Host Group
   hosts: localhost
