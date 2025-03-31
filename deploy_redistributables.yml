@@ -5,8 +5,8 @@
   tasks:
     - name: Set user creds
       ansible.builtin.set_fact:
-        windows_username: ''
-        windows_password: ''
+        windows_username: '' # Enter your Windows username here
+        windows_password: '' # Enter your Windows password here
 
 - name: Install C++ Redistributables on Windows VMs
   hosts: windows_vms

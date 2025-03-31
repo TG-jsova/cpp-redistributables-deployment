@@ -24,12 +24,19 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
    192.168.0.120
    ```
 
-3. Build and run the Docker container:
+3. Set your Windows credentials in the playbook:
+   Open `deploy_redistributables.yml` and update the following lines:
+   ```yaml
+   windows_username: '' # Enter your Windows username here
+   windows_password: '' # Enter your Windows password here
+   ```
+
+4. Build and run the Docker container:
    ```bash
    docker-compose up --build
    ```
 
-4. Verify the installation:
+5. Verify the installation:
    - Check the target machines to confirm that the redistributables and VMware Tools are installed.
 
 ### Running Locally
@@ -46,12 +53,19 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
    192.168.0.120
    ```
 
-3. Run the playbook:
+3. Set your Windows credentials in the playbook:
+   Open `deploy_redistributables.yml` and update the following lines:
+   ```yaml
+   windows_username: '' # Enter your Windows username here
+   windows_password: '' # Enter your Windows password here
+   ```
+
+4. Run the playbook:
    ```bash
    ansible-playbook -i windows_vms deploy_redistributables.yml
    ```
 
-4. Verify the installation:
+5. Verify the installation:
    - Check the target machines to confirm that the redistributables and VMware Tools are installed.
 
 ## Playbook Overview
