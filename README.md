@@ -12,7 +12,7 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/jasonsova/vmware-tools-12.5.1-update.git
+   git clone https://github.com/TG-jsova/vmware-tools-12.5.1-update.git
    cd vmware-tools-12.5.1-update
    ```
 
