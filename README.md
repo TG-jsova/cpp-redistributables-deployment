@@ -12,8 +12,8 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/jasonsova/cpp-redistributables-deployment.git
-   cd cpp-redistributables-deployment
+   git clone https://github.com/jasonsova/vmware-tools-12.5.1-update.git
+   cd vmware-tools-12.5.1-update
    ```
 
 2. Update the inventory file (`windows_vms`) with the IP addresses or hostnames of your Windows VMs:
