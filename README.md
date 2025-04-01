@@ -1,6 +1,27 @@
-# C++ Redistributables and VMware Tools Deployment
+# VMware Tools 12.5.1 Update and C++ Redistributables Deployment
 
-This Ansible playbook automates the deployment of Microsoft Visual C++ Redistributables and VMware Tools to Windows virtual machines. It dynamically retrieves the inventory of powered-on Windows Server VMs from vCenter, ensures that both x86 and x64 versions of the redistributables are installed, installs VMware Tools, handles reboots if necessary, and cleans up temporary installer files.
+This Ansible playbook automates the deployment of Microsoft Visual C++ Redistributables and VMware Tools 12.5.1 on Windows VMs managed through vCenter. It includes several enhancements and fixes to ensure smooth deployment.
+
+## Recent Updates
+
+### Docker Compose Enhancements
+- Updated the Docker Compose file to use a custom Debian-based image.
+- Added installation of required system packages (`python3`, `python3-pip`, `python3-venv`, `sshpass`, etc.).
+- Configured a Python virtual environment for dependency isolation.
+- Installed required Python libraries (`ansible`, `pypsrp`, `pyvmomi`, `requests`, `cryptography`) and Ansible collections (`ansible.windows`, `community.windows`, `community.vmware`).
+
+### Gratuitous ARP Fix
+- Added a task to apply a gratuitous ARP fix to the Windows registry before the pre-installation reboot.
+- The registry key `HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\ArpRetryCount` is set to `0` to disable gratuitous ARP.
+
+### Improved Reboot Handling
+- Ensured that reboots are conditionally triggered only when necessary, such as after installing or updating redistributables or VMware Tools.
+
+### Optimized Package Checks
+- Moved the checks for x86 Redistributable, x64 Redistributable, and VMware Tools to occur after confirming system access, reducing unnecessary reboots.
+
+### Cleanup of Temporary Files
+- Added a task to clean up installer files from the `C:\Temp` directory after installation is complete.
 
 ## Prerequisites
 
@@ -66,31 +87,26 @@ This Ansible playbook automates the deployment of Microsoft Visual C++ Redistrib
 5. Verify the installation:
    - Check the target machines to confirm that the redistributables and VMware Tools are installed.
 
-## Playbook Overview
+## Features
 
-- **Dynamic Inventory**:
-  - Logs in to vCenter using the provided credentials.
-  - Retrieves the inventory of powered-on Windows Server VMs.
-  - Dynamically creates an in-memory host group for the playbook.
-- **Install C++ Redistributables**:
-  - Ensures the `C:\Temp` directory exists.
-  - Downloads the x86 and x64 redistributable installers.
-  - Installs the redistributables.
-  - Reboots the machine if required.
-  - Cleans up temporary installer files.
-- **Install VMware Tools 12.5.1**:
-  - Downloads the VMware Tools installer.
-  - Installs VMware Tools with reboot suppressed.
-  - Reboots the machine if required after installation.
-  - Cleans up the VMware Tools installer file.
+- **vCenter Inventory Retrieval**: Automatically retrieves the inventory of VMs from vCenter and filters powered-on Windows VMs.
+- **C++ Redistributables Installation**: Installs or updates both x86 and x64 versions of Microsoft Visual C++ Redistributables.
+- **VMware Tools Installation**: Installs or updates VMware Tools to version 12.5.1.
+- **Gratuitous ARP Fix**: Applies a registry fix to address gratuitous ARP issues on Windows servers.
+- **Reboot Management**: Handles reboots before and after installations as needed.
+- **Optimized Package Checks**: Ensures package checks occur only after confirming system access, reducing unnecessary reboots.
+- **Temporary File Cleanup**: Removes installer files after successful deployment.
+
+## Requirements
+
+- Ansible 2.10 or later
+- Required Ansible collections:
+  - `community.vmware`
+  - `ansible.windows`
+  - `community.windows`
 
 ## Notes
 
-- The playbook uses `community.vmware.vmware_vm_info` to retrieve the vCenter inventory and `win_get_url` to download the redistributables and VMware Tools.
-- Rebooting is handled automatically if required by the installation process.
-- Ensure that PowerShell Remoting is enabled on the target machines.
-- Ensure the following Python libraries are installed in your environment:
-  ```bash
-  pip install ansible pypsrp pyvmomi requests cryptography
-  ```
+- Ensure that WinRM is properly configured on the target Windows VMs.
+- The playbook assumes that the `C:\Temp` directory exists or will be created during execution.
 

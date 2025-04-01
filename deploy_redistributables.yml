@@ -26,9 +26,11 @@
         windows_vms: >-
           {{
             vcenter_inventory.virtual_machines
-            | selectattr('guest.guest_id', 'search', '^windows')
-            | selectattr('runtime.power_state', 'equalto', 'poweredOn')
-            | map(attribute='guest.ip_address')
+            | selectattr('guest_fullname', 'search', 'Windows')
+            | selectattr('power_state', 'equalto', 'poweredOn')
+            | rejectattr('guest_name', 'search', '^TTVDI')
+            | map(attribute='ip_address')
+            | select('defined')
             | list
           }}
 
@@ -51,76 +53,186 @@
     - name: Wait for system to become reachable over WinRM
       ansible.builtin.wait_for_connection:
         delay: 6
-        timeout: 900
+        timeout: 300
         sleep: 10
 
-    - name: Ensure Temp directory exists
-      ansible.windows.win_file:
-        path: C:\Temp
-        state: directory
-      register: ensure_temp_dir
-
-    - name: Download x86 Redistributable if not installed
-      ansible.windows.win_get_url:
-        url: https://aka.ms/vs/16/release/vc_redist.x86.exe
-        dest: C:\Temp\vc_redist.x86.exe
-      register: download_x86
-
-    - name: Download x64 Redistributable if not installed
-      ansible.windows.win_get_url:
-        url: https://aka.ms/vs/16/release/vc_redist.x64.exe
-        dest: C:\Temp\vc_redist.x64.exe
-      register: download_x64
-
-    - name: Install x86 Redistributable if not installed
-      ansible.windows.win_package:
-        path: C:\Temp\vc_redist.x86.exe
-        arguments: /install /quiet /norestart
+    - name: Apply gratuitous ARP fix to the system registry
+      ansible.windows.win_regedit:
+        path: HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
+        name: ArpRetryCount
+        data: 0
+        type: dword
         state: present
-      register: install_x86
 
-    - name: Install x64 Redistributable if not installed
-      ansible.windows.win_package:
-        path: C:\Temp\vc_redist.x64.exe
-        arguments: /install /quiet /norestart
-        state: present
-      register: install_x64
+    - name: Check if x86 Redistributable is installed
+      ansible.windows.win_shell: |
+        Get-WMIObject -Class Win32_Product | Where-Object Name -like "Microsoft Visual C++ 2022 X86 Additional Runtime*" | Select-Object -ExpandProperty Version
+      register: x86_version_check
+      changed_when: false
 
-    - name: Check if reboot is required
+    - name: Check if x64 Redistributable is installed
+      ansible.windows.win_shell: |
+        Get-WMIObject -Class Win32_Product | Where-Object Name -like "Microsoft Visual C++ 2022 X64 Additional Runtime*" | Select-Object -ExpandProperty Version
+      register: x64_version_check
+      changed_when: false
+
+    - name: Check if VMware Tools is installed
+      ansible.windows.win_shell: |
+        Get-WMIObject -Class Win32_Product | Where-Object Name -Like "VMware*" | Select-Object -ExpandProperty Version
+      register: vmware_tools_version_check
+      changed_when: false
+
+    - name: Set flag if any package needs installation
+      ansible.builtin.set_fact:
+        needs_installation: >-
+          {{
+            x86_version_check.stdout.strip() != "14.40.33816" or
+            x64_version_check.stdout.strip() != "14.40.33816" or
+            vmware_tools_version_check.stdout.strip() != "12.5.1.24649672"
+          }}
+
+    - name: Pre-installation reboot
       ansible.windows.win_reboot:
         reboot_timeout: 600
-        msg: "Rebooting after installing C++ Redistributables."
+        msg: "Rebooting before starting update"
+      when: needs_installation
       register: reboot_result
 
     - name: Wait for system to become reachable over WinRM
       ansible.builtin.wait_for_connection:
         delay: 6
-        timeout: 900
+        timeout: 300
         sleep: 10
+      when: needs_installation
 
-    - name: Download VMware Tools 12.5.1 installer
+    - name: Ensure Temp directory exists
+      ansible.windows.win_file:
+        path: C:\Temp
+        state: directory
+      when: needs_installation
+
+    - name: Download x86 Redistributable if not installed
+      ansible.windows.win_get_url:
+        url: https://aka.ms/vs/16/release/vc_redist.x86.exe
+        dest: C:\Temp\vc_redist.x86.exe
+      when: needs_installation and x86_version_check.stdout.strip() != "14.40.33816"
+      register: download_x86
+      retries: 3
+      delay: 5
+
+    - name: Download x64 Redistributable if not installed
+      ansible.windows.win_get_url:
+        url: https://aka.ms/vs/16/release/vc_redist.x64.exe
+        dest: C:\Temp\vc_redist.x64.exe
+      when: needs_installation and x64_version_check.stdout.strip() != "14.40.33816"
+      register: download_x64
+      retries: 3
+      delay: 5
+
+    - name: Attempt x86 Redistributable installation
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x86.exe
+        arguments: /install /quiet /norestart
+        state: present
+      when: needs_installation and download_x86 is changed
+      register: install_x86
+      failed_when: false
+
+    - name: Reboot if x86 Redistributable installation fails
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting due to x86 Redistributable installation failure."
+      when: needs_installation and install_x86 is failed
+
+    - name: Retry x86 Redistributable installation after reboot
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x86.exe
+        arguments: /install /quiet /norestart
+        state: present
+      when: needs_installation and install_x86 is failed
+      failed_when: false
+
+    - name: Attempt x64 Redistributable installation
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x64.exe
+        arguments: /install /quiet /norestart
+        state: present
+      when: needs_installation and download_x64 is changed
+      register: install_x64
+      failed_when: false
+
+    - name: Reboot if x64 Redistributable installation fails
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting due to x64 Redistributable installation failure."
+      when: needs_installation and install_x64 is failed
+
+    - name: Retry x64 Redistributable installation after reboot
+      ansible.windows.win_package:
+        path: C:\Temp\vc_redist.x64.exe
+        arguments: /install /quiet /norestart
+        state: present
+      when: needs_installation and install_x64 is failed
+      failed_when: false
+
+    - name: Check if reboot is required
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting after installing C++ Redistributables."
+      when: needs_installation and download_x64 is changed
+      register: reboot_result
+
+    - name: Wait for system to become reachable over WinRM
+      ansible.builtin.wait_for_connection:
+        delay: 6
+        timeout: 300
+        sleep: 10
+      when: needs_installation
+
+    - name: Download VMware Tools 12.5.1 installer if not installed or outdated
       ansible.windows.win_get_url:
         url: https://packages.vmware.com/tools/releases/latest/windows/x64/VMware-tools-12.5.1-24649672-x64.exe
         dest: C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+      when: needs_installation and vmware_tools_version_check.stdout.strip() != "12.5.1.24649672"
       register: download_vmware_tools
+      retries: 3
+      delay: 5
 
-    - name: Install VMware Tools 12.5.1 with reboot suppressed
+    - name: Attempt VMware Tools installation
       ansible.windows.win_package:
         path: C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
         arguments: /S /v"/qn REBOOT=ReallySuppress"
         state: present
+      when: needs_installation and download_vmware_tools is changed
       register: install_vmware_tools
+      failed_when: false
+
+    - name: Reboot if VMware Tools installation fails
+      ansible.windows.win_reboot:
+        reboot_timeout: 600
+        msg: "Rebooting due to VMware Tools installation failure."
+      when: needs_installation and install_vmware_tools is failed
+
+    - name: Retry VMware Tools installation after reboot
+      ansible.windows.win_package:
+        path: C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+        arguments: /S /v"/qn REBOOT=ReallySuppress"
+        state: present
+      when: needs_installation and install_vmware_tools is failed
+      failed_when: false
 
     - name: Check if reboot is required after VMware Tools installation
       ansible.windows.win_reboot:
         reboot_timeout: 600
         msg: "Rebooting after installing VMware Tools 12.5.1."
+      when: needs_installation and download_vmware_tools is changed
 
     - name: Wait for system to become reachable over WinRM
       ansible.builtin.wait_for_connection:
         delay: 6
-        timeout: 900
+        timeout: 300
         sleep: 10
+      when: needs_installation
 
     - name: Clean up installer files
       ansible.windows.win_file:
@@ -130,4 +242,5 @@
         - C:\Temp\vc_redist.x86.exe
         - C:\Temp\vc_redist.x64.exe
         - C:\Temp\VMware-tools-12.5.1-24649672-x64.exe
+      when: needs_installation
       register: cleanup_result
