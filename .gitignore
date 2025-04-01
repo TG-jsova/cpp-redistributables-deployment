@@ -2,9 +2,11 @@
 .env
 .venv
 .ansible
-.vscode
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Exclude .vscode folder
+.vscode/
